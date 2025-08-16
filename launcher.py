@@ -8,7 +8,7 @@ sys.path.append(import_path)
 import tictactoe
 import freecell
 import connectfour
-
+# Constants for the launcher
 WIDTH, HEIGHT = 600, 500
 DISPLAY_MODE = 0  # 0: windowed, 1: fullscreen
 BG_COLOR = (30, 40, 60)
