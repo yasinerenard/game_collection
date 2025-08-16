@@ -8,6 +8,8 @@ sys.path.append(import_path)
 import tictactoe
 import freecell
 import connectfour
+import dotsandboxes  # <-- Add this import
+
 # Constants for the launcher
 WIDTH, HEIGHT = 600, 500
 DISPLAY_MODE = 0  # 0: windowed, 1: fullscreen
@@ -63,10 +65,12 @@ def main_menu():
         btn1 = pygame.Rect(WIDTH//2 - 150, 180, 300, 70)
         btn2 = pygame.Rect(WIDTH//2 - 150, 280, 300, 70)
         btn3 = pygame.Rect(WIDTH//2 - 150, 380, 300, 70)
+        btn4 = pygame.Rect(WIDTH//2 - 150, 480, 300, 70)
         mouse = pygame.mouse.get_pos()
         draw_button(btn1, "Tic-Tac-Toe", btn1.collidepoint(mouse))
         draw_button(btn2, "Freecell", btn2.collidepoint(mouse))
         draw_button(btn3, "Connect Four", btn3.collidepoint(mouse))
+        draw_button(btn4, "Dots and Boxes", btn4.collidepoint(mouse))
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -90,6 +94,45 @@ def main_menu():
                     run_freecell()
                 elif btn3.collidepoint(event.pos):
                     run_connectfour()
+                elif btn4.collidepoint(event.pos):
+                    dotsandboxes_difficulty_menu()
+
+def dotsandboxes_difficulty_menu():
+    global WIDTH, HEIGHT, screen, DISPLAY_MODE
+    btn_easy = pygame.Rect(WIDTH//2 - 150, 180, 300, 70)
+    btn_medium = pygame.Rect(WIDTH//2 - 150, 280, 300, 70)
+    btn_hard = pygame.Rect(WIDTH//2 - 150, 380, 300, 70)
+    running = True
+    while running:
+        screen.fill(BG_COLOR)
+        title = font.render("Dots and Boxes Difficulty", True, (255,255,255))
+        screen.blit(title, (WIDTH//2 - title.get_width()//2, 60))
+        mouse = pygame.mouse.get_pos()
+        draw_button(btn_easy, "Easy (5 squares)", btn_easy.collidepoint(mouse))
+        draw_button(btn_medium, "Medium (10 squares)", btn_medium.collidepoint(mouse))
+        draw_button(btn_hard, "Hard (15 squares)", btn_hard.collidepoint(mouse))
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.VIDEORESIZE:
+                WIDTH, HEIGHT = event.w, event.h
+                DISPLAY_MODE = 0
+                screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    return
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if btn_easy.collidepoint(event.pos):
+                    run_dotsandboxes("easy")
+                    return
+                elif btn_medium.collidepoint(event.pos):
+                    run_dotsandboxes("medium")
+                    return
+                elif btn_hard.collidepoint(event.pos):
+                    run_dotsandboxes("hard")
+                    return
 
 def run_tictactoe():
     global WIDTH, HEIGHT, screen, DISPLAY_MODE
@@ -436,6 +479,68 @@ def run_connectfour():
         screen.blit(buffer, (0, 0))
         pygame.display.flip()
         clock.tick(60)
+
+def run_dotsandboxes(difficulty="easy"):
+    global WIDTH, HEIGHT, screen, DISPLAY_MODE
+    pygame.display.set_caption("Dots and Boxes")
+    import importlib
+    importlib.reload(dotsandboxes)
+    dotsandboxes.WIDTH = WIDTH
+    dotsandboxes.HEIGHT = HEIGHT
+    dotsandboxes.screen = screen
+
+    def present_surface(surface):
+        screen.blit(surface, (0, 0))
+        pygame.display.flip()
+    dotsandboxes.present_surface = present_surface
+
+    running = True
+    clock = pygame.time.Clock()
+    arrow_rect = None
+
+    # Initialize game state
+    game = dotsandboxes.PygameDotsAndBoxesGame(WIDTH, HEIGHT, screen, difficulty)
+    while running and game.running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if arrow_rect and arrow_rect.collidepoint(event.pos):
+                    return
+                game.handle_click(event.pos)
+            elif event.type == pygame.MOUSEMOTION:
+                game.handle_mouse_motion(event.pos)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    game.restart()
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
+                    game.running = False
+                elif event.key == pygame.K_f:
+                    if DISPLAY_MODE == 0:
+                        set_display_mode(WIDTH, HEIGHT, 1)
+                    else:
+                        set_display_mode(WIDTH, HEIGHT, 0)
+            elif event.type == pygame.VIDEORESIZE:
+                WIDTH, HEIGHT = event.w, event.h
+                DISPLAY_MODE = 0
+                screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+                dotsandboxes.WIDTH = WIDTH
+                dotsandboxes.HEIGHT = HEIGHT
+                dotsandboxes.screen = screen
+                game.resize(WIDTH, HEIGHT, screen)
+        buffer = pygame.Surface((WIDTH, HEIGHT))
+        old_screen = game.__dict__.get('screen', None)
+        game.screen = buffer
+        game.draw(buffer)
+        if old_screen is not None:
+            game.screen = old_screen
+        arrow_rect = draw_back_arrow_on_surface(buffer)
+        screen.blit(buffer, (0, 0))
+        pygame.display.update()
+        clock.tick(60)
+    return
 
 def draw_back_arrow_on_surface(surface):
     # Draw a back arrow at the top left on the given surface
